@@ -64,11 +64,13 @@ co_map_2 <- merge(permit_data_test, county_fips)
 co_map_3 <- merge(co_map_2, co_map, by.x = "polyname", by.y = "ID")
 
 # Setting a color pallette for leaflet 
-col_pal <- colorQuantile(palette = "viridis", domain = co_map_3$vacancy_percentage, n = 20)
+col_pal <- colorQuantile(palette = "viridis", domain = co_map_3$vacancy_percentage, n = 10)
 
 #convert to sf
 co_map_4 <- st_as_sf(co_map_3)
 # Building a map
+# Warning : Legend percentile is in relation to other CO counties, not true vacancy rate. 
+# Remember to make a very very explicit note of this when publishing
 co_map_4 %>% 
   st_transform(crs = "+init=epsg:4326") %>%
   leaflet(width = "100%") %>%
@@ -79,4 +81,11 @@ co_map_4 %>%
     smoothFactor = 0,
     fillOpacity = 0.7,
     color = ~col_pal(vacancy_percentage)
+  ) %>% 
+  addLegend(
+    "bottomright", 
+    pal = col_pal, 
+    values = ~vacancy_percentage,
+    title = "Vacancy percentiles",
+    opacity = 1
   )
