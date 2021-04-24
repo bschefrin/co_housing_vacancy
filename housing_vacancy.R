@@ -43,7 +43,7 @@ permit_data_5 <- permit_data_4 %>%
   rename("fips" = "fips_state_and_county_code") %>% 
   mutate(vacancy_percentage = as.numeric(vacancy_percentage))
 
-# Map tests-----------------------------------------------------------------------------------------
+# Map test-----------------------------------------------------------------------------------------
 # Trying to make leaflet work with maps package and data
 
 permit_data_test <- permit_data_5 %>% 
@@ -53,7 +53,7 @@ permit_data_test <- permit_data_5 %>%
 # checking to see what map looks like 
 co_map <- st_as_sf(map("county", "colorado", plot = FALSE, fill = TRUE))
 
-# getting fips and location information
+# getting fips and location information, adding a 0 to fips column for merge
 county_fips <- county.fips %>% 
   mutate(fips = paste0("0", fips))
 
@@ -86,6 +86,69 @@ co_map_4 %>%
     "bottomright", 
     pal = col_pal, 
     values = ~vacancy_percentage,
-    title = "Vacancy percentiles",
+    title = "Percentile of CO counties",
     opacity = 1
   )
+# Great success!!!!
+
+# Leaflet prep ---------------------------------------------------------------------------------------
+# Attaching columns for leaflet use
+permit_data_6 <- merge(permit_data_5, county_fips)
+
+permit_data_7 <- merge(permit_data_6, co_map, by.x = "polyname", by.y = "ID")
+
+# Assigning sf designation to data
+permit_data_8 <- st_as_sf(permit_data_7)
+
+#cleaning names to look pretty for drop down menu
+permit_data_final <- clean_names(permit_data_8)
+
+# Building a Shiny Ap --------------------------------------------------------------------------------
+
+
+
+ui <- fluidPage(
+  titlePanel("Colorado Housing Data"),
+  inputPanel(
+    selectInput(
+      inputId = "year",
+      label = "Year",
+      choices = sort(permit_data_final$year)
+  ),
+  br(),
+
+  selectInput(
+    inputId = "sel_data",
+    label = "Data to Display",
+    choices = c("total_population",
+                "persons_per_household",
+                "total_housing_units",
+                "vacant_housing_units",
+                "vacancy_percentage"
+                ),
+    multiple = TRUE,
+    selectize = TRUE,
+    # uiOutput("total_population"),
+    # uiOutput("persons_per_household"),
+    # uiOutput("total_housing_units"),
+    # uiOutput("vacant_housing_units"),
+    # uiOutput("vacancy_percentage")
+  ),
+  plotOutput("heat_map"),
+  plotOutput("bar_graph")
+))
+
+  
+
+
+server <- function(input, output, session) {
+  
+  
+}
+
+
+
+shinyApp(ui = ui, server = server)
+
+
+
