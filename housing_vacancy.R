@@ -97,52 +97,169 @@ permit_data_6 <- merge(permit_data_5, county_fips)
 
 permit_data_7 <- merge(permit_data_6, co_map, by.x = "polyname", by.y = "ID")
 
-# Assigning sf designation to data
-permit_data_8 <- st_as_sf(permit_data_7)
-
 #cleaning names to look pretty for drop down menu
-permit_data_final <- clean_names(permit_data_8)
+permit_data_8 <- clean_names(permit_data_7)
+  
+# Filtering housing vacancy percentages
+
+permit_data_9 <- permit_data_8 %>% 
+  select(polyname, geom, fips, area, year, vacancy_percentage)
+
+# Assigning sf designation to data
+
+permit_data_final <- st_as_sf(permit_data_9)
 
 # Building a Shiny Ap --------------------------------------------------------------------------------
 
 
 
 ui <- fluidPage(
-  titlePanel("Colorado Housing Data"),
-  inputPanel(
-    selectInput(
-      inputId = "year",
-      label = "Year",
-      choices = sort(permit_data_final$year)
-  ),
-  br(),
+  navbarPage(title = "Colorado Housing Data",
+    tabPanel(title = "County Comparison",
+      sidebarLayout(
+        sidebarPanel(
+          selectInput(
+            inputId = "year",
+            label = "Year",
+            choices = sort(permit_data_final$year)
+          )
+          # br(),
+          # 
+          # selectInput(
+          #   inputId = "sel_data",
+          #   label = "Data to Display",
+          #   choices = c("Total Population" = "total_population",
+          #               "Persons Per Household" = "persons_per_household",
+          #               "Total Housing Units" = "total_housing_units",
+          #               "Vacant Housing Units" = "vacant_housing_units",
+          #               "Vacancy Percentage" = "vacancy_percentage"
+          #   ),
+          #   multiple = FALSE
+          #   # uiOutput("total_population"),
+          #   # uiOutput("persons_per_household"),
+          #   # uiOutput("total_housing_units"),
+          #   # uiOutput("vacant_housing_units"),
+          #   # uiOutput("vacancy_percentage")
+          # )
+          ),
+        mainPanel(
+          leafletOutput("heat_map"),
+          plotOutput("bar_graph") 
+        ))
+      ),
+      tabPanel(title = "Counties over Time",
+               sidebarLayout(
+                 sidebarPanel(
+                   inputPanel(
+                     selectInput(
+                       inputId = "counties",
+                       label = "Select Counties",
+                       choices = sort(unique(permit_data_final$area)),
+                       multiple = TRUE
+                     )),
+                     # br(),
+                     # selectInput(
+                     #   inputId = "sel_data_2",
+                     #   label = "Data to Display",
+                     #   choices = c("Total Population" = "total_population",
+                     #               "Persons Per Household" = "persons_per_household",
+                     #               "Total Housing Units" = "total_housing_units",
+                     #               "Vacant Housing Units" = "vacant_housing_units",
+                     #               "Vacancy Percentage" = "vacancy_percentage"
+                     #   ),
+                     #   multiple = FALSE,
 
-  selectInput(
-    inputId = "sel_data",
-    label = "Data to Display",
-    choices = c("total_population",
-                "persons_per_household",
-                "total_housing_units",
-                "vacant_housing_units",
-                "vacancy_percentage"
-                ),
-    multiple = TRUE,
-    selectize = TRUE,
-    # uiOutput("total_population"),
-    # uiOutput("persons_per_household"),
-    # uiOutput("total_housing_units"),
-    # uiOutput("vacant_housing_units"),
-    # uiOutput("vacancy_percentage")
-  ),
-  plotOutput("heat_map"),
-  plotOutput("bar_graph")
-))
+                 ),
+                 mainPanel(
+                   plotOutput("line_graph")
+                 )))))
+
 
   
 
 
 server <- function(input, output, session) {
   
+  county_leaflet_map <- reactive({
+    req(input$year)
+    filter(permit_data_final, year %in% input$year)
+  })
+  
+  output$heat_map <- renderLeaflet({
+    county_leaflet_map() %>% 
+      st_transform(crs = "+init=epsg:4326") %>%
+      leaflet(width = "100%") %>%
+      addProviderTiles(provider = "CartoDB.Positron") %>%
+      addPolygons(
+        popup = ~paste0(area, "<br>", "Vacancy %: ", vacancy_percentage),
+        stroke = FALSE,
+        smoothFactor = 0,
+        fillOpacity = 0.7,
+        color = ~col_pal(vacancy_percentage)
+      ) %>% 
+      addLegend(
+        "bottomright", 
+        pal = col_pal, 
+        values = ~vacancy_percentage,
+        title = "Percentile of CO counties",
+        opacity = 1
+      )
+      
+    
+    
+  })
+  
+  county_line_graph <- reactive({
+    req(input$counties)
+    filter(permit_data_final, area %in% input$counties)
+  })
+  
+  output$line_graph <- renderPlot({
+    input$counties
+      ggplot(data = county_line_graph()) +
+        geom_line(mapping = aes(x = year, y = vacancy_percentage , group = area, color = area), lwd = 1.5) +
+        labs(title = "Vacancy % by County 2010 - 2018", color = "County") +
+        xlab("Year") +
+        ylab("Percent Vacant") +
+        scale_color_viridis(discrete = TRUE) +
+        theme_minimal() +
+        theme(plot.title = element_text(hjust = 0.5))
+  })
+
+  # county_comparison <- reactive({
+  #   req(input$year)
+  #   req(input$sel_data)
+  #   filter(permit_data_final, year %in% input$year) %>% 
+  #     select(permit_data_final$polyname, permit_data_final$geom, permit_data_final$fips, 
+  #            permit_data_final$area,
+  #            permit_data_final$year, 
+  #            get(input$sel_data))
+  #   
+  # })
+  # 
+  # county_line_graph <- reactive({
+  #   req(input$counties)
+  #   req(input$sel_data_2)
+  #   filter(permit_data_final, area %in% input$counties) %>% 
+  #     select(permit_data_final$area,
+  #            permit_data_final$year, 
+  #            get(input$sel_data_2))
+  # 
+  # })
+  # 
+  # output$line_graph <- renderPlot({
+  #   input$counties
+  #   input$sel_data_2
+  #   ggplot(data = county_line_graph()) +
+  #     geom_line(mapping = aes(x = year, y = get(input$sel_data_2), group = area, color = area), lwd = 1.5) +
+  #     labs(title = "Selected Data by County 2010 - 2018", color = "County") +
+  #     xlab("Year") + 
+  #     ylab("Percent Vacant") +
+  #     scale_color_viridis(discrete = TRUE) +
+  #     theme_minimal() +
+  #     theme(plot.title = element_text(hjust = 0.5))
+  # })
+
   
 }
 
