@@ -1,7 +1,7 @@
 library(pacman)
 
 p_load("tidyverse", "httr", "jsonlite", "janitor", "usmap", "lubridate", "shiny", "hrbrthemes", 
-       "viridis", "shinyWidgets", "leaflet", "sf", "maps")
+       "viridis", "shinyWidgets", "leaflet", "sf", "maps", "scales")
 
 # This project is the code for practicing shiny apps. I want to take the counties of CO
 # and provide summary housing statistics for each county.
@@ -102,12 +102,12 @@ permit_data_8 <- clean_names(permit_data_7)
   
 # Filtering housing vacancy percentages
 
-permit_data_9 <- permit_data_8 %>% 
-  select(polyname, geom, fips, area, year, vacancy_percentage)
+# permit_data_9 <- permit_data_8 %>% 
+#   select(polyname, geom, fips, area, year, vacancy_percentage)
 
 # Assigning sf designation to data
 
-permit_data_final <- st_as_sf(permit_data_9)
+permit_data_final <- st_as_sf(permit_data_8)
 
 # Building a Shiny Ap --------------------------------------------------------------------------------
 
@@ -157,17 +157,17 @@ ui <- fluidPage(
                        choices = sort(unique(permit_data_final$area)),
                        multiple = TRUE
                      )),
-                     # br(),
-                     # selectInput(
-                     #   inputId = "sel_data_2",
-                     #   label = "Data to Display",
-                     #   choices = c("Total Population" = "total_population",
-                     #               "Persons Per Household" = "persons_per_household",
-                     #               "Total Housing Units" = "total_housing_units",
-                     #               "Vacant Housing Units" = "vacant_housing_units",
-                     #               "Vacancy Percentage" = "vacancy_percentage"
-                     #   ),
-                     #   multiple = FALSE,
+                     br(),
+                     selectizeInput(
+                       inputId = "sel_data_2",
+                       label = "Data to Display",
+                       choices = c("Total Population" = "total_population",
+                                   "Persons Per Household" = "persons_per_household",
+                                   "Total Housing Units" = "total_housing_units",
+                                   "Vacant Housing Units" = "vacant_housing_units",
+                                   "Vacancy Percentage" = "vacancy_percentage"
+                       ),
+                       multiple = FALSE)
 
                  ),
                  mainPanel(
@@ -211,19 +211,27 @@ server <- function(input, output, session) {
   
   county_line_graph <- reactive({
     req(input$counties)
-    filter(permit_data_final, area %in% input$counties)
+    req(input$sel_data_2)
+    permit_data_final %>% 
+      select(area, year, input$sel_data_2) %>% 
+    filter(area %in% input$counties)
+      
+    
+    
   })
   
   output$line_graph <- renderPlot({
     input$counties
+    input$sel_data_2
       ggplot(data = county_line_graph()) +
-        geom_line(mapping = aes(x = year, y = vacancy_percentage , group = area, color = area), lwd = 1.5) +
-        labs(title = "Vacancy % by County 2010 - 2018", color = "County") +
+        geom_line(mapping = aes(x = year, y = get(input$sel_data_2) , group = area, color = area), lwd = 1.5) +
+        labs(title = "Selected Data by County 2010 - 2018", color = "County") +
         xlab("Year") +
-        ylab("Percent Vacant") +
+        ylab("Selected Data") +
+        scale_y_continuous(labels = comma) +
         scale_color_viridis(discrete = TRUE) +
         theme_minimal() +
-        theme(plot.title = element_text(hjust = 0.5))
+        theme(plot.title = element_text(hjust = 0.5), axis.title.y = element_text(angle = 90, hjust = 0.5))
   })
 
   # county_comparison <- reactive({
