@@ -1,7 +1,8 @@
 library(pacman)
 
-p_load("tidyverse", "httr", "jsonlite", "janitor", "usmap", "lubridate", "shiny", "hrbrthemes", 
-       "viridis", "shinyWidgets", "leaflet", "sf", "maps", "scales", "shinydashboard", "rgdal")
+p_load("tidyverse", "httr", "jsonlite", "janitor", "usmap", "shiny", "hrbrthemes", 
+       "viridis", "shinyWidgets", "leaflet", "sf", "maps", "scales", "shinydashboard",
+       "shinythemes")
 
 # This project is the code for practicing shiny apps. I want to take the counties of CO
 # and provide visual statistics for each county. Major props to my former professors
@@ -67,6 +68,7 @@ permit_data_final <- st_as_sf(permit_data_8)
 
 
 ui <- fluidPage(
+  theme = shinytheme("united"),
   navbarPage(title = "Colorado Housing Data",
     tabPanel(title = "County Comparison",
       sidebarLayout(
