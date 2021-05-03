@@ -1,12 +1,25 @@
-library(pacman)
+library(tidyverse)
+library(leaflet)
+library(httr)
+library(maps)
+library(janitor)
+library(jsonlite)
+library(sf)
+library(scales)
+library(shiny)
+library(shinythemes)
+library(shinyWidgets)
+library(viridis)
+library(rsconnect)
 
-p_load("tidyverse", "httr", "jsonlite", "janitor", "usmap", "shiny", "hrbrthemes", 
-       "viridis", "shinyWidgets", "leaflet", "sf", "maps", "scales", "shinydashboard",
-       "shinythemes")
+
+
+# p_load("tidyverse", "httr", "jsonlite", "janitor", "usmap", "shiny", "hrbrthemes", 
+#        "viridis", "shinyWidgets", "leaflet", "sf", "maps", "scales", "shinydashboard",
+#        "shinythemes", "rsconnect")
 
 # This project is the code for practicing shiny apps. I want to take the counties of CO
-# and provide visual statistics for each county. Major props to my former professors
-# Ed Rubin and Grant Mcdermott for introducing me to R and visualizations. Please check out their work.
+# and provide visual statistics for each county. Users can select what data they want to visualize
 
 # fips codes for CO counties -------------------------------------------------------------------------
 
@@ -21,7 +34,7 @@ data_fips_2 <- data_fips %>%
 
 
 # Reading in permit data for housing
-permit_data <- read_csv("C:/Users/Jake/Desktop/r_projects/shiny_projects/co_housing_vacancies/building_permit_counts_in_colorado.csv")
+permit_data <- read_csv("https://raw.githubusercontent.com/bschefrin/co_housing_vacancy/master/building_permit_counts_in_colorado.csv")
 
 
 # Selecting data at the county level rather than include all cities
@@ -49,6 +62,9 @@ permit_data_5 <- permit_data_4 %>%
 county_fips <- county.fips %>% 
   mutate(fips = paste0("0", fips))
 
+# Getting locational information for CO counties
+
+co_map <- st_as_sf(map("county", "colorado", plot = FALSE, fill = TRUE))
 
 # Leaflet prep ---------------------------------------------------------------------------------------
 # Attaching columns for leaflet use
@@ -155,7 +171,7 @@ server <- function(input, output, session) {
       leaflet(width = "100%") %>%
       addProviderTiles(provider = "CartoDB.Positron") %>%
       addPolygons(
-        popup = ~paste0(area, "<br>", "Selected Data: ", get(input$sel_data)),
+        popup = ~paste0(area, "<br>", "Selected Data: ", prettyNum(get(input$sel_data), big.mark = ",")),
         stroke = FALSE,
         smoothFactor = 0,
         fillOpacity = 0.7,

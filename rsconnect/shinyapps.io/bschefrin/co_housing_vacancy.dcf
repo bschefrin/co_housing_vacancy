@@ -1,0 +1,12 @@
+name: co_housing_vacancy
+title: co_housing_vacancy
+username:
+account: bschefrin
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4070861
+bundleId: 4551573
+url: https://bschefrin.shinyapps.io/co_housing_vacancy/
+when: 1620059678.35865
+asMultiple: FALSE
+asStatic: FALSE
